@@ -9,12 +9,23 @@ sudo apt upgrade -y
 sudo apt install -y curl git build-essential
 
 2. 安装Node.js
-curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+# 删除旧版本Node.js（如果存在）
+sudo apt remove nodejs
+sudo apt purge nodejs
+sudo apt autoremove
+
+# 安装Node.js 18.x
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt install -y nodejs
 
 # 验证安装
 node --version
 npm --version
+
+# 确保Node.js版本 >= 18.0.0
+
+# 更新npm到最新版本
+sudo npm install -g npm@latest
 
 3. 安装MongoDB
 # 导入MongoDB公钥
@@ -85,7 +96,14 @@ cd /var/www/fishing-site
 git clone <your-repository-url> .
 
 # 安装依赖
-npm install --production
+npm install --production --legacy-peer-deps
+npm audit fix --force
+
+# 如果还有警告，可以手动更新有问题的包
+npm install @testing-library/dom@latest cheerio@latest undici@latest whatwg-mimetype@latest whatwg-encoding@latest --save
+
+# 清理不必要的依赖
+npm prune --production
 
 # 创建环境配置
 nano .env

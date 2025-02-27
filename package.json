@@ -1,6 +1,9 @@
 {
   "name": "fishing-site",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "private": true,
   "dependencies": {
     "@ant-design/icons": "^4.8.0",
