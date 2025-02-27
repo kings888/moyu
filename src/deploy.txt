@@ -126,7 +126,7 @@ sudo nano /etc/nginx/sites-available/fishing-site
 # 添加以下配置：
 server {
     listen 80;
-    server_name your-domain.com;
+    server_name 127.0.0.1;
 
     root /var/www/fishing-site/build;
     index index.html;
@@ -146,7 +146,9 @@ server {
 }
 
 # 创建符号链接
-sudo ln -s /etc/nginx/sites-available/fishing-site /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/ln
+sudo rm -f /etc/nginx/sites-enabled/fishing-site
+sudo ln -s /etc/nginx/sites-available/fishing-site /etc/nginx/sites-enabled/fishing-site
 
 # 测试配置
 sudo nginx -t
@@ -223,3 +225,65 @@ crontab -e
 3. 定期检查日志文件大小
 4. 监控系统资源使用情况
 5. 定期更新系统和依赖包
+
+15. 常见问题和解决方案
+
+# 依赖安装问题
+## 问题：Node.js版本兼容性警告
+npm WARN EBADENGINE Unsupported engine { package: xxx, required: { node: '>=18' } }
+## 解决方案：
+sudo apt remove nodejs
+sudo apt purge nodejs
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+
+## 问题：安装依赖时出现大量警告
+## 解决方案：
+npm install --legacy-peer-deps
+npm audit fix --force
+
+# 构建问题
+## 问题：找不到index.html
+Could not find a required file. Name: index.html
+## 解决方案：
+mkdir -p public
+# 创建必要的public文件（index.html, manifest.json等）
+
+## 问题：找不到模块 'ajv/dist/compile/codegen'
+## 解决方案：
+rm -rf node_modules package-lock.json
+npm cache clean --force
+npm install
+npm install ajv ajv-keywords
+
+# 运行问题
+## 问题：MongoDB权限错误
+## 解决方案：
+sudo groupadd mongodb
+sudo useradd -r -g mongodb mongodb
+sudo chown -R mongodb:mongodb /data/db
+
+# 部署检查清单：
+1. Node.js版本 >= 18.0.0
+2. 所有必要的目录结构已创建
+3. 环境变量配置正确
+4. MongoDB和Redis服务正常运行
+5. 防火墙配置正确
+6. SSL证书（如需要）配置正确
+
+# 故障排除命令：
+# 检查Node.js版本
+node --version
+
+# 检查npm缓存
+npm cache verify
+
+# 检查服务状态
+sudo systemctl status mongod
+sudo systemctl status redis
+sudo systemctl status nginx
+
+# 检查日志
+pm2 logs
+sudo tail -f /var/log/nginx/error.log
+sudo tail -f /var/log/mongodb/mongod.log
