@@ -1,0 +1,207 @@
+摸鱼网站 Ubuntu部署指南
+
+1. 系统准备
+# 更新系统
+sudo apt update
+sudo apt upgrade -y
+
+# 安装必要工具
+sudo apt install -y curl git build-essential
+
+2. 安装Node.js
+curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# 验证安装
+node --version
+npm --version
+
+3. 安装MongoDB
+# 导入MongoDB公钥
+curl -fsSL https://pgp.mongodb.com/server-6.0.asc | \
+   sudo gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg \
+   --dearmor
+
+# 创建MongoDB源列表文件
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | \
+   sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+
+# 更新包列表并安装MongoDB
+sudo apt update
+sudo apt install -y mongodb-org
+
+# 启动MongoDB
+sudo systemctl start mongod
+sudo systemctl enable mongod
+
+# 验证MongoDB是否正常运行
+sudo systemctl status mongod
+
+# 创建数据库目录（如果不存在）
+sudo mkdir -p /data/db
+# 创建mongodb用户和组
+sudo groupadd mongodb
+sudo useradd -r -g mongodb mongodb
+# 设置目录权限
+sudo chown -R mongodb:mongodb /data/db
+
+# 配置MongoDB（可选）
+sudo nano /etc/mongod.conf
+# 可以修改以下配置：
+# bind_ip = 127.0.0.1
+# port = 27017
+
+# 重启MongoDB使配置生效
+sudo systemctl restart mongod
+
+4. 安装Redis
+sudo apt install -y redis-server
+
+# 配置Redis
+sudo nano /etc/redis/redis.conf
+# 修改以下配置：
+# requirepass your_redis_password
+# maxmemory 512mb
+# maxmemory-policy allkeys-lru
+
+# 重启Redis
+sudo systemctl restart redis
+sudo systemctl enable redis
+
+5. 安装Nginx
+sudo apt install -y nginx
+
+# 启动Nginx
+sudo systemctl start nginx
+sudo systemctl enable nginx
+
+6. 项目部署
+# 创建项目目录
+sudo mkdir -p /var/www/fishing-site
+sudo chown -R $USER:$USER /var/www/fishing-site
+
+# 克隆项目
+cd /var/www/fishing-site
+git clone <your-repository-url> .
+
+# 安装依赖
+npm install --production
+
+# 创建环境配置
+nano .env
+# 添加以下内容：
+PORT=3000
+NODE_ENV=production
+MONGODB_URI=mongodb://localhost:27017/fishingsite
+REDIS_URL=redis://:your_redis_password@localhost:6379
+JWT_SECRET=your_jwt_secret
+DEEPSEEK_API_KEY=your_deepseek_key
+WECHAT_APP_ID=your_app_id
+WECHAT_APP_SECRET=your_app_secret
+
+# 构建前端
+npm run build
+
+7. 配置Nginx
+sudo nano /etc/nginx/sites-available/fishing-site
+
+# 添加以下配置：
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    root /var/www/fishing-site/build;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# 创建符号链接
+sudo ln -s /etc/nginx/sites-available/fishing-site /etc/nginx/sites-enabled/
+
+# 测试配置
+sudo nginx -t
+
+# 重启Nginx
+sudo systemctl restart nginx
+
+8. 使用PM2运行服务
+# 安装PM2
+sudo npm install -g pm2
+
+# 启动服务
+pm2 start src/server/app.js --name fishing-site
+
+# 设置开机自启
+pm2 startup ubuntu
+pm2 save
+
+9. 设置日志目录
+sudo mkdir -p /var/www/fishing-site/logs
+sudo chown -R $USER:$USER /var/www/fishing-site/logs
+
+10. 安全配置
+# 配置防火墙
+sudo ufw allow 80
+sudo ufw allow 443
+sudo ufw allow 22
+sudo ufw enable
+
+11. 设置SSL（可选）
+# 安装Certbot
+sudo apt install -y certbot python3-certbot-nginx
+
+# 获取SSL证书
+sudo certbot --nginx -d your-domain.com
+
+12. 监控命令
+# 查看应用状态
+pm2 status
+
+# 查看日志
+pm2 logs fishing-site
+
+# 查看系统资源
+htop
+
+13. 更新部署
+cd /var/www/fishing-site
+git pull
+npm install
+npm run build
+pm2 reload fishing-site
+
+14. 备份策略
+# 创建备份脚本
+nano backup.sh
+
+#!/bin/bash
+BACKUP_DIR="/backup/mongodb"
+DATE=$(date +%Y%m%d)
+mkdir -p $BACKUP_DIR
+mongodump --out $BACKUP_DIR/$DATE
+find $BACKUP_DIR -type d -mtime +7 -exec rm -rf {} +
+
+# 设置定时任务
+chmod +x backup.sh
+crontab -e
+# 添加：
+0 2 * * * /var/www/fishing-site/backup.sh
+
+注意事项：
+1. 替换所有的占位符（your-domain.com, your_redis_password等）
+2. 确保所有服务都正常运行
+3. 定期检查日志文件大小
+4. 监控系统资源使用情况
+5. 定期更新系统和依赖包

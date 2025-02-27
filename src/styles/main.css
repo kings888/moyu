@@ -1,0 +1,67 @@
+:root {
+  --primary-color: #1890ff;
+  --background-color: #f0f2f5;
+}
+
+body {
+  background-color: var(--background-color);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #1890ff 0%, #36cfc9 100%);
+}
+
+.tag-container {
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.content-feed {
+  padding: 16px;
+}
+
+.ant-card {
+  margin-bottom: 16px;
+  transition: all 0.3s;
+}
+
+.ant-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.login-box {
+  background: white;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.login-box h2 {
+  color: #1890ff;
+  margin-bottom: 16px;
+}
+
+.login-box p {
+  color: #666;
+  margin-bottom: 24px;
+}
+
+.wechat-login-btn {
+  width: 200px;
+  height: 45px;
+  font-size: 16px;
+}
+
+.wechat-login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(24,144,255,0.2);
+} 
