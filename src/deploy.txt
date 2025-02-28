@@ -1,289 +1,111 @@
-摸鱼网站 Ubuntu部署指南
+# 摸鱼网站 Docker部署指南
 
-1. 系统准备
-# 更新系统
-sudo apt update
-sudo apt upgrade -y
+## 1. 安装Docker和Docker Compose
+```bash
+# 安装Docker
+curl -fsSL https://get.docker.com | sh
 
-# 安装必要工具
-sudo apt install -y curl git build-essential
+# 启动Docker服务
+sudo systemctl start docker
+sudo systemctl enable docker
 
-2. 安装Node.js
-# 删除旧版本Node.js（如果存在）
-sudo apt remove nodejs
-sudo apt purge nodejs
-sudo apt autoremove
+# 安装Docker Compose
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+```
 
-# 安装Node.js 18.x
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
+## 2. 克隆项目
+```bash
+git clone <your-repo-url> moyu
+cd moyu
+```
 
-# 验证安装
-node --version
-npm --version
-
-# 确保Node.js版本 >= 18.0.0
-
-# 更新npm到最新版本
-sudo npm install -g npm@latest
-
-3. 安装MongoDB
-# 导入MongoDB公钥
-curl -fsSL https://pgp.mongodb.com/server-6.0.asc | \
-   sudo gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg \
-   --dearmor
-
-# 创建MongoDB源列表文件
-echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | \
-   sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
-
-# 更新包列表并安装MongoDB
-sudo apt update
-sudo apt install -y mongodb-org
-
-# 启动MongoDB
-sudo systemctl start mongod
-sudo systemctl enable mongod
-
-# 验证MongoDB是否正常运行
-sudo systemctl status mongod
-
-# 创建数据库目录（如果不存在）
-sudo mkdir -p /data/db
-# 创建mongodb用户和组
-sudo groupadd mongodb
-sudo useradd -r -g mongodb mongodb
-# 设置目录权限
-sudo chown -R mongodb:mongodb /data/db
-
-# 配置MongoDB（可选）
-sudo nano /etc/mongod.conf
-# 可以修改以下配置：
-# bind_ip = 127.0.0.1
-# port = 27017
-
-# 重启MongoDB使配置生效
-sudo systemctl restart mongod
-
-4. 安装Redis
-sudo apt install -y redis-server
-
-# 配置Redis
-sudo nano /etc/redis/redis.conf
-# 修改以下配置：
-# requirepass your_redis_password
-# maxmemory 512mb
-# maxmemory-policy allkeys-lru
-
-# 重启Redis
-sudo systemctl restart redis
-sudo systemctl enable redis
-
-5. 安装Nginx
-sudo apt install -y nginx
-
-# 启动Nginx
-sudo systemctl start nginx
-sudo systemctl enable nginx
-
-6. 项目部署
-# 创建项目目录
-sudo mkdir -p /var/www/fishing-site
-sudo chown -R $USER:$USER /var/www/fishing-site
-
-# 克隆项目
-cd /var/www/fishing-site
-git clone <your-repository-url> .
-
-# 安装依赖
-npm install --production --legacy-peer-deps
-npm audit fix --force
-
-# 如果还有警告，可以手动更新有问题的包
-npm install @testing-library/dom@latest cheerio@latest undici@latest whatwg-mimetype@latest whatwg-encoding@latest --save
-
-# 清理不必要的依赖
-npm prune --production
-
-# 创建环境配置
-nano .env
-# 添加以下内容：
-PORT=3000
+## 3. 配置环境变量
+```bash
+# 创建.env文件
+cat > .env << 'EOF'
 NODE_ENV=production
-MONGODB_URI=mongodb://localhost:27017/fishingsite
-REDIS_URL=redis://:your_redis_password@localhost:6379
-JWT_SECRET=your_jwt_secret
-DEEPSEEK_API_KEY=your_deepseek_key
+JWT_SECRET=your_secret_key_here
+DEEPSEEK_API_KEY=your_api_key
 WECHAT_APP_ID=your_app_id
 WECHAT_APP_SECRET=your_app_secret
+EOF
+```
 
-# 构建前端
-npm run build
-
-7. 配置Nginx
-sudo nano /etc/nginx/sites-available/fishing-site
-
-# 添加以下配置：
-server {
-    listen 80;
-    server_name 127.0.0.1;
-
-    root /var/www/fishing-site/build;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    location /api {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-
-# 创建符号链接
-sudo rm -f /etc/nginx/sites-enabled/ln
-sudo rm -f /etc/nginx/sites-enabled/fishing-site
-sudo ln -s /etc/nginx/sites-available/fishing-site /etc/nginx/sites-enabled/fishing-site
-
-# 测试配置
-sudo nginx -t
-
-# 重启Nginx
-sudo systemctl restart nginx
-
-8. 使用PM2运行服务
-# 安装PM2
-sudo npm install -g pm2
+## 4. 构建和启动服务
+```bash
+# 构建镜像
+docker-compose build
 
 # 启动服务
-pm2 start src/server/app.js --name fishing-site
-
-# 设置开机自启
-pm2 startup ubuntu
-pm2 save
-
-9. 设置日志目录
-sudo mkdir -p /var/www/fishing-site/logs
-sudo chown -R $USER:$USER /var/www/fishing-site/logs
-
-10. 安全配置
-# 配置防火墙
-sudo ufw allow 80
-sudo ufw allow 443
-sudo ufw allow 22
-sudo ufw enable
-
-11. 设置SSL（可选）
-# 安装Certbot
-sudo apt install -y certbot python3-certbot-nginx
-
-# 获取SSL证书
-sudo certbot --nginx -d your-domain.com
-
-12. 监控命令
-# 查看应用状态
-pm2 status
+docker-compose up -d
 
 # 查看日志
-pm2 logs fishing-site
+docker-compose logs -f
+```
 
-# 查看系统资源
-htop
+## 5. 检查服务状态
+```bash
+# 检查容器状态
+docker-compose ps
 
-13. 更新部署
-cd /var/www/fishing-site
-git pull
-npm install
-npm run build
-pm2 reload fishing-site
+# 检查应用日志
+docker-compose logs app
 
-14. 备份策略
+# 检查MongoDB日志
+docker-compose logs mongo
+
+# 检查Redis日志
+docker-compose logs redis
+```
+
+## 6. 数据备份
+```bash
 # 创建备份脚本
-nano backup.sh
-
+cat > backup.sh << 'EOF'
 #!/bin/bash
 BACKUP_DIR="/backup/mongodb"
 DATE=$(date +%Y%m%d)
 mkdir -p $BACKUP_DIR
-mongodump --out $BACKUP_DIR/$DATE
+docker-compose exec -T mongo mongodump --out /dump
+docker cp $(docker-compose ps -q mongo):/dump $BACKUP_DIR/$DATE
 find $BACKUP_DIR -type d -mtime +7 -exec rm -rf {} +
+EOF
 
-# 设置定时任务
 chmod +x backup.sh
-crontab -e
-# 添加：
-0 2 * * * /var/www/fishing-site/backup.sh
 
-注意事项：
-1. 替换所有的占位符（your-domain.com, your_redis_password等）
-2. 确保所有服务都正常运行
-3. 定期检查日志文件大小
-4. 监控系统资源使用情况
-5. 定期更新系统和依赖包
+# 添加定时任务
+(crontab -l 2>/dev/null; echo "0 2 * * * $(pwd)/backup.sh") | crontab -
+```
 
-15. 常见问题和解决方案
+## 7. 更新部署
+```bash
+# 拉取最新代码
+git pull
 
-# 依赖安装问题
-## 问题：Node.js版本兼容性警告
-npm WARN EBADENGINE Unsupported engine { package: xxx, required: { node: '>=18' } }
-## 解决方案：
-sudo apt remove nodejs
-sudo apt purge nodejs
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
+# 重新构建并启动
+docker-compose up -d --build
+```
 
-## 问题：安装依赖时出现大量警告
-## 解决方案：
-npm install --legacy-peer-deps
-npm audit fix --force
+## 8. 故障排除
+```bash
+# 查看容器日志
+docker-compose logs -f [service_name]
 
-# 构建问题
-## 问题：找不到index.html
-Could not find a required file. Name: index.html
-## 解决方案：
-mkdir -p public
-# 创建必要的public文件（index.html, manifest.json等）
+# 进入容器
+docker-compose exec [service_name] sh
 
-## 问题：找不到模块 'ajv/dist/compile/codegen'
-## 解决方案：
-rm -rf node_modules package-lock.json
-npm cache clean --force
-npm install
-npm install ajv ajv-keywords
+# 重启服务
+docker-compose restart [service_name]
 
-# 运行问题
-## 问题：MongoDB权限错误
-## 解决方案：
-sudo groupadd mongodb
-sudo useradd -r -g mongodb mongodb
-sudo chown -R mongodb:mongodb /data/db
+# 完全重建
+docker-compose down
+docker-compose up -d --build
+```
 
-# 部署检查清单：
-1. Node.js版本 >= 18.0.0
-2. 所有必要的目录结构已创建
-3. 环境变量配置正确
-4. MongoDB和Redis服务正常运行
-5. 防火墙配置正确
-6. SSL证书（如需要）配置正确
-
-# 故障排除命令：
-# 检查Node.js版本
-node --version
-
-# 检查npm缓存
-npm cache verify
-
-# 检查服务状态
-sudo systemctl status mongod
-sudo systemctl status redis
-sudo systemctl status nginx
-
-# 检查日志
-pm2 logs
-sudo tail -f /var/log/nginx/error.log
-sudo tail -f /var/log/mongodb/mongod.log
+## 注意事项：
+1. 确保Docker和Docker Compose已正确安装
+2. 所有敏感信息都应该通过环境变量配置
+3. 定期备份数据
+4. 监控容器资源使用情况
+5. 保持镜像更新以修复安全问题
