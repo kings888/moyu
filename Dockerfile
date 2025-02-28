@@ -15,13 +15,14 @@ WORKDIR /app
 COPY package*.json ./
 
 # 安装依赖
-RUN npm install
+RUN npm install --production && \
+    npm install mongoose express ioredis dotenv
 
 # 复制源代码
 COPY . .
 
 # 配置Nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # 构建前端
 RUN npm run build
