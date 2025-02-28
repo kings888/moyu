@@ -20,6 +20,9 @@ RUN npm install
 # 复制源代码
 COPY . .
 
+# 配置Nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
 # 构建前端
 RUN npm run build
 
