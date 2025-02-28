@@ -1,39 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { ConfigProvider } from 'antd';
-import zhCN from 'antd/locale/zh_CN';
-import AppRoutes from './routes';
-import http from './utils/http';
-import './styles/main.css';
+import React from 'react';
+import { Layout, Typography } from 'antd';
 
-const App = () => {
-  const [initialized, setInitialized] = useState(false);
+const { Header, Content } = Layout;
+const { Title } = Typography;
 
-  useEffect(() => {
-    // 检查用户登录状态
-    const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          await http.get('/auth/check');
-        } catch (error) {
-          localStorage.removeItem('token');
-        }
-      }
-      setInitialized(true);
-    };
-
-    checkAuth();
-  }, []);
-
-  if (!initialized) {
-    return null; // 或者显示loading
-  }
-
+function App() {
   return (
-    <ConfigProvider locale={zhCN}>
-      <AppRoutes />
-    </ConfigProvider>
+    <Layout>
+      <Header style={{ background: '#fff', padding: '0 20px' }}>
+        <Title level={3}>摸鱼网站</Title>
+      </Header>
+      <Content style={{ padding: '20px' }}>
+        <p>网站正在建设中...</p>
+      </Content>
+    </Layout>
   );
-};
+}
 
 export default App; 
